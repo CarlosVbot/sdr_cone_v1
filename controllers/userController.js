@@ -25,3 +25,24 @@ exports.register = async (req, res) => {
         res.status(500).json({ message: 'Ocurrió un error en el servidor' });
     }
 };
+
+exports.consult = async (req, res) => {
+    /* const { username, email, password } = req.body;
+ */
+    /* if (!username || !email || !password) {
+        return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+    } */
+
+    try {
+        const users = await userModel.consultUser();
+        console.log(users);
+        if (users.length == 0) {
+            return res.status(201).json({ message: 'No hay datos registrados' });
+        }
+
+        res.status(201).json({ message: 'Usuarios Registrados', Data: users });
+    } catch (error) {
+        console.error('Error al registrar el usuario:', error);
+        res.status(500).json({ message: 'Ocurrió un error en el servidor' });
+    }
+};

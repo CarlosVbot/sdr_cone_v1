@@ -4,6 +4,11 @@ const getUserByEmail = async (email) => {
     console.log(email)
     return result_email.rows;
 };
+const consultUser = async () => {
+    const result_User = await pool.query('SELECT * FROM usuarios' );
+    console.log('result users' + JSON.stringify(result_User))
+    return result_User.rows;
+};
 const createUser = async (username, email, password_hash,create_at,update_at,is_active,is_verified) => {
     const result = await pool.query(
         'INSERT INTO usuarios (username, email, password_hash,create_at,update_at,is_active,is_verified) VALUES ($1, $2, $3 ,$4 ,$5 ,$6 ,$7 ) RETURNING *',
@@ -15,4 +20,5 @@ const createUser = async (username, email, password_hash,create_at,update_at,is_
 module.exports = {
     getUserByEmail,
     createUser,
+    consultUser
 };
