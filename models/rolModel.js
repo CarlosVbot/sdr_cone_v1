@@ -1,23 +1,14 @@
 const {DataTypes} = require('sequelize')
 const sequelize = require('../config/sequelizer')
 
-const Usuario = sequelize.define('usuarios',{
+const Rol = sequelize.define('roles',{
     id:{
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    username: {
+    name: {
         type: DataTypes.STRING(60),
-        allowNull: false,
-    },
-    email: {
-        type: DataTypes.STRING(60),
-        allowNull: false,
-        unique: true,
-    },
-    password_hash: {
-        type: DataTypes.STRING(255),
         allowNull: false,
     },
     create_at: {
@@ -32,15 +23,9 @@ const Usuario = sequelize.define('usuarios',{
         type: DataTypes.BOOLEAN,
         defaultValue: true,
     },
-    is_verified: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-    },
 }, {
     timestamps: false,
-    tableName: 'usuarios',
+    tableName: 'roles',
 })
 
-
-
-module.exports = Usuario;
+module.exports = Rol;

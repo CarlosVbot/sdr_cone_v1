@@ -1,24 +1,29 @@
 const {DataTypes} = require('sequelize')
 const sequelize = require('../config/sequelizer')
+const Usuario = require('./userModel')
+const Rol = require('./rolModel')
 
-const Usuario = sequelize.define('usuarios',{
+const UserRol = sequelize.define('user_rols',{
     id:{
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    username: {
-        type: DataTypes.STRING(60),
+    user_id: {
+        type: DataTypes.INTEGER,
         allowNull: false,
+        references: {
+            model: Usuario,
+            key: 'id',
+        }
     },
-    email: {
-        type: DataTypes.STRING(60),
+    rol_id: {
+        type: DataTypes.INTEGER,
         allowNull: false,
-        unique: true,
-    },
-    password_hash: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
+        references: {
+            model: Rol,
+            key: 'id',
+        }
     },
     create_at: {
         type: DataTypes.DATE,
@@ -32,15 +37,9 @@ const Usuario = sequelize.define('usuarios',{
         type: DataTypes.BOOLEAN,
         defaultValue: true,
     },
-    is_verified: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-    },
 }, {
     timestamps: false,
-    tableName: 'usuarios',
+    tableName: 'user_rols',
 })
 
-
-
-module.exports = Usuario;
+module.exports = UserRol;
