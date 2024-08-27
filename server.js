@@ -29,7 +29,7 @@ app.use('/api/auth', authRoutes);
         });
     process.env.SYNC = 'false';
 }else{*/
-    sequelize.sync({force: false})
+    sequelize.sync({force: true})
         .then(() => {
             console.log('Base de datos y tablas creadas');
         })
