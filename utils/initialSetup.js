@@ -1,6 +1,7 @@
 const Rol = require('../models/rolModel');
 const User = require('../models/userModel');
 const UserRol = require('../models/user_rolModel');
+const loginAtt = require('../models/loginAttModel');
 const bcrypt = require('bcrypt');
 
 const initialSetup = async () => {

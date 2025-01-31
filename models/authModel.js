@@ -1,13 +1,16 @@
 const pool = require('../config/database');
+
 const getUserByEmail = async (email) => {
     const result_email = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
     console.log(email)
     return result_email.rows;
 };
+
 const consultUsers = async () => {
     const result_User = await pool.query('SELECT id,username,email,is_verified FROM usuarios WHERE is_active = true');
     return result_User.rows;
 };
+
 const consultUser = async (id) => {
     try {
         const result_User = await pool.query(
@@ -22,6 +25,7 @@ const consultUser = async (id) => {
         throw error;
     }
 };
+
 const createUser = async (username, email, password_hash,create_at,update_at,is_active,is_verified) => {
     const result = await pool.query(
         'INSERT INTO usuarios (username, email, password_hash,create_at,update_at,is_active,is_verified) VALUES ($1, $2, $3 ,$4 ,$5 ,$6 ,$7 ) RETURNING *',
