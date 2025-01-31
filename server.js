@@ -1,43 +1,31 @@
-const express = require('express')
-const coneccion = require('./config/database')
-const sequelize = require('./config/sequelizer')
-const Usuario = require('./models/userModel')
-const Rol = require('./models/rolModel')
-const token = require('./models/tokenModel')
-const LoginAtt = require('./models/loginAttModel')
-const UserRol = require('./models/user_rolModel')
-const authRoutes = require('./routes/userRouters.js');
-require('dotenv').config();
+const app = require('./app');
+const sequelize = require('./config/sequelizer');
+const initialSetup = require('./utils/initialSetup');
 
-/*let sync =  process.env.SYNC;
-console.log(sync);*/
-const app = express()
-const port = 8000
+const port = process.env.PORT || 8000;
 
-app.use(express.json());
+// Sincronizar la base de datos y realizar la configuración inicial
+const startServer = async () => {
+    try {
+        const syncInicial = process.env.SYNC === 'true';
+        console.log('syncInicial');
+        console.log(syncInicial);
+        await sequelize.sync({ force: syncInicial });
+        console.log('Base de datos y tablas creadas.');
 
-app.use('/api/auth', authRoutes);
+        if (syncInicial) {
+            console.log('Configuración inicial...');
+            await initialSetup();
+        }
 
-/*if(sync === 'true') {
-
-    sequelize.sync({force: true})
-        .then(() => {
-            console.log('Base de datos y tablas creadas');
-        })
-        .catch(err => {
-            console.error('Error al sincronizar la base de datos:', err);
+        // Iniciar el servidor
+        app.listen(port, () => {
+            console.log(`Servidor corriendo en http://localhost:${port}`);
         });
-    process.env.SYNC = 'false';
-}else{*/
-    sequelize.sync({force: true})
-        .then(() => {
-            console.log('Base de datos y tablas creadas');
-        })
-        .catch(err => {
-            console.error('Error al sincronizar la base de datos:', err);
-        });
-//}
+    } catch (error) {
+        console.error('Error al iniciar el servidor:', error);
+        process.exit(1);
+    }
+};
 
-app.listen(port, ()=>{
-    console.log('server running')
-})
+startServer();

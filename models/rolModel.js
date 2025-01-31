@@ -7,10 +7,6 @@ const Rol = sequelize.define('roles',{
         autoIncrement: true,
         primaryKey: true
     },
-    name: {
-        type: DataTypes.STRING(60),
-        allowNull: false,
-    },
     create_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -23,9 +19,26 @@ const Rol = sequelize.define('roles',{
         type: DataTypes.BOOLEAN,
         defaultValue: true,
     },
+    users_admin: {
+        type: DataTypes.STRING(2),
+        allowNull: false,
+    },
+    name: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+    },
 }, {
     timestamps: false,
     tableName: 'roles',
 })
 
 module.exports = Rol;
+/*
+CR =create read,
+CU = create update,
+RU = read update,
+XR = read,
+XC = create,
+XU = update,
+XX = all
+*/
