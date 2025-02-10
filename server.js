@@ -3,7 +3,7 @@ const sequelize = require('./config/sequelizer');
 const initialSetup = require('./utils/initialSetup');
 
 const port = process.env.PORT || 8000;
-
+//Akira estuvo aqui
 // Sincronizar la base de datos y realizar la configuración inicial
 const startServer = async () => {
     try {
