@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar Sesión | Finansanzen</title>
+
+    <style>
+        body {
+            background-color: #1e1b2e;
+            color: #eee;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .contenedor {
+            background-color: #2a213d;
+            padding: 40px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            color: #c084fc;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+            color: #ccc;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 8px;
+            background-color: #3b2d56;
+            color: #eee;
+            font-size: 1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 12px;
+            cursor: pointer;
+            background-color: #7c3aed;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #9d4edd;
+        }
+
+        .secundario {
+            background-color: transparent;
+            border: 1px solid #7c3aed;
+            color: #7c3aed;
+        }
+
+        .secundario:hover {
+            background-color: #7c3aed;
+            color: white;
+        }
+
+        .enlace {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .enlace a {
+            color: #a78bfa;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .enlace a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="contenedor">
+    <h2>Iniciar Sesión</h2>
+    <form >
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email"  required>
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password"  required>
+
+        <button type="submit">Entrar</button>
+        <button type="button" class="secundario" >Registrarse</button>
+        <div class="enlace">
+            <a href="#" >¿Olvidaste tu contraseña?</a>
+        </div>
+    </form>
+</div>
+
+<script src="/js/login.js"></script>
+</body>
+</html>
