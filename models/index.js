@@ -6,6 +6,9 @@ const UserRol = require('./user_rolModel');
 const LoginAtt = require('./loginAttModel');
 const Token = require('./tokenModel');
 
+const Gasto = require('./gastoModel');
+const Ingreso = require('./ingresoModel');
+
 
 Usuario.hasMany(UserRol, { foreignKey: 'user_id' });
 UserRol.belongsTo(Usuario, { foreignKey: 'user_id' });
@@ -16,9 +19,12 @@ UserRol.belongsTo(Rol, { foreignKey: 'rol_id' });
 Usuario.hasMany(LoginAtt, { foreignKey: 'user_id' });
 LoginAtt.belongsTo(Usuario, { foreignKey: 'user_id' });
 
-//vincular tokens a usuarios:
-// Usuario.hasMany(Token, { foreignKey: 'user_id' });
-// Token.belongsTo(Usuario, { foreignKey: 'user_id' });
+
+Usuario.hasMany(Gasto, { foreignKey: 'user_id' });
+Gasto.belongsTo(Usuario, { foreignKey: 'user_id' });
+
+Usuario.hasMany(Ingreso, { foreignKey: 'user_id' });
+Ingreso.belongsTo(Usuario, { foreignKey: 'user_id' });
 
 module.exports = {
     sequelize,
@@ -27,4 +33,6 @@ module.exports = {
     UserRol,
     LoginAtt,
     Token,
+    Gasto,
+    Ingreso
 };

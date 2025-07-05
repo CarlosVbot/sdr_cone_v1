@@ -24,7 +24,7 @@ exports.register = async (req, res) => {
             create_at: new Date(),
             update_at: new Date(),
             is_active: true,
-            is_verified: false
+            is_verified: true
         });
 
         res.status(201).json({ message: 'Usuario registrado con éxito', user: newUser });
@@ -73,8 +73,8 @@ exports.login = async (req, res) => {
         const token = jwt.sign(payload, process.env.SECRET_KEY, {
             expiresIn: '1d'
         });
-
-        res.status(200).json({ message: 'Inicio de sesión exitoso', token });
+        let userID = user.id;
+        res.status(200).json({ message: 'Inicio de sesión exitoso', token, userID });
 
     } catch (error) {
         console.error('Error en login:', error);
