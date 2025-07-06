@@ -87,12 +87,12 @@ exports.consult = async (req, res) => {
         authenticateToken(req, res, async () => {
             const { id } = req.body;
 
-            const roleCode = req.user?.role?.users_admin || '';
-            const permisosValidos = ["XX", "XR", "RU", "CR"];
+          //  const roleCode = req.user?.role?.users_admin || '';
+           // const permisosValidos = ["XX", "XR", "RU", "CR"];
 
-            if (!permisosValidos.includes(roleCode)) {
-                return res.status(403).json({ message: 'Acceso denegado' });
-            }
+          //  if (!permisosValidos.includes(roleCode)) {
+            //    return res.status(403).json({ message: 'Acceso denegado' });
+         //   }
 
             if (id) {
                 const user = await Usuario.findOne({ where: { id, is_active: true } });
