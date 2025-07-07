@@ -4,6 +4,7 @@ const gastoController = require('../controllers/gastoController');
 
 router.post('/create', gastoController.create);
 router.post('/consult', gastoController.getAll);
+router.post('/consultone', gastoController.getOne);
 router.put('/update', gastoController.update);
 router.delete('/delete', gastoController.delete);
 

@@ -4,6 +4,7 @@ const ingresoController = require('../controllers/ingresoController');
 
 router.post('/create', ingresoController.create);
 router.post('/consult', ingresoController.getAll);
+router.post('/consultone', ingresoController.getOne);
 router.put('/update', ingresoController.update);
 router.delete('/delete', ingresoController.delete);
 

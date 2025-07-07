@@ -1,4 +1,4 @@
-const { Gasto } = require('../models');
+const { Gasto, Ingreso} = require('../models');
 const authenticateToken = require('../middlewares/authenticateToken');
 
 exports.create = async (req, res) => {
@@ -42,6 +42,23 @@ exports.getAll = async (req, res) => {
             res.status(200).json({ data: gastos });
         } catch (error) {
             res.status(500).json({ message: 'Error al obtener gastos' });
+        }
+    });
+};
+
+exports.getOne = async (req, res) => {
+    authenticateToken(req, res, async () => {
+        try {
+            const { id } = req.body;
+            const ingresos = await Gasto.findOne({
+                where: {
+                    id: id,
+                    is_active: true
+                }
+            });
+            res.status(200).json({ data: ingresos });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al obtener gasto' });
         }
     });
 };

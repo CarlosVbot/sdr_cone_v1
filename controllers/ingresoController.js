@@ -46,6 +46,23 @@ exports.getAll = async (req, res) => {
     });
 };
 
+exports.getOne = async (req, res) => {
+    authenticateToken(req, res, async () => {
+        try {
+            const { id } = req.body;
+            const ingresos = await Ingreso.findOne({
+                where: {
+                    id: id,
+                    is_active: true
+                }
+            });
+            res.status(200).json({ data: ingresos });
+        } catch (error) {
+            res.status(500).json({ message: 'Error al obtener ingresos' ,error: error.message});
+        }
+    });
+};
+
 exports.update = async (req, res) => {
     authenticateToken(req, res, async () => {
         const { id, descripcion, monto, categoria, periodo, fecha } = req.body;
