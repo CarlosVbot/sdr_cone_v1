@@ -11,7 +11,7 @@ const Producto = sequelize.define('productos', {
 
     pizzeria_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
             model: Pizzeria,
             key: 'id'
