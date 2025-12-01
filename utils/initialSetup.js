@@ -33,7 +33,7 @@ const initialSetup = async () => {
         });
 
 
-       await Pizzeria.create({
+       let pizzeria_ = await Pizzeria.create({
             nombre: 'PIZZERIA GIANCARLO',
             telefono: '0000000000',
             email_contacto: 'carlosvibot14@gmail.com',
@@ -42,7 +42,7 @@ const initialSetup = async () => {
             is_active: true
         });
 
-        console.log('Configuración inicial completada.');
+        console.log('Configuración inicial completada.>>>>>>>',pizzeria_);
     } catch (error) {
         console.error('Error en la configuración inicial:', error);
         throw error;
