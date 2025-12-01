@@ -1,45 +1,54 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelizer');
-const Usuario = require('./userModel');
+const Pizzeria = require('./pizzeriaModel');
 
-const Gasto = sequelize.define('gastos', {
+const Producto = sequelize.define('productos', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    user_id: {
+
+    pizzeria_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: Usuario,
+            model: Pizzeria,
             key: 'id'
         }
     },
+
+    nombre: {
+        type: DataTypes.STRING(120),
+        allowNull: false
+    },
+
     descripcion: {
         type: DataTypes.STRING(255),
-        allowNull: false
+        allowNull: true
     },
-    monto: {
-        type: DataTypes.DECIMAL(12, 2),
-        allowNull: false
-    },
+
     categoria: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING(60),
+        allowNull: true
+    },
+
+    precio: {
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false
     },
-    date_end: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+
+    unidad: {
+        type: DataTypes.STRING(30),
+        allowNull: true,
+        defaultValue: 'pieza'
     },
-    date: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    periodo: {
+
+    orden: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
+
     create_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
@@ -54,7 +63,12 @@ const Gasto = sequelize.define('gastos', {
     }
 }, {
     timestamps: false,
-    tableName: 'gastos'
+    tableName: 'productos',
+    hooks: {
+        beforeUpdate: (producto) => {
+            producto.update_at = new Date();
+        }
+    }
 });
 
-module.exports = Gasto;
+module.exports = Producto;
