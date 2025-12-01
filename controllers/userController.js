@@ -4,9 +4,10 @@ const { Usuario, UserRol, Rol, LoginAtt } = require('../models');
 const authenticateToken = require('../middlewares/authenticateToken');
 
 exports.register = async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, full_name, phone, pizzeria_id } = req.body;
+
     if (!username || !email || !password) {
-        return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+        return res.status(400).json({ message: 'username, email y password son obligatorios.' });
     }
 
     try {
@@ -19,7 +20,10 @@ exports.register = async (req, res) => {
 
         const newUser = await Usuario.create({
             username,
+            full_name: full_name || username,
             email,
+            phone: phone || null,
+            pizzeria_id: pizzeria_id || null,
             password_hash: hashedPassword,
             create_at: new Date(),
             update_at: new Date(),
@@ -27,7 +31,17 @@ exports.register = async (req, res) => {
             is_verified: true
         });
 
-        res.status(201).json({ message: 'Usuario registrado con éxito', user: newUser });
+        res.status(201).json({
+            message: 'Usuario registrado con éxito',
+            user: {
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
+                full_name: newUser.full_name,
+                phone: newUser.phone,
+                pizzeria_id: newUser.pizzeria_id
+            }
+        });
     } catch (error) {
         console.error('Error al registrar usuario:', error);
         res.status(500).json({ message: 'Error en el servidor.' });
@@ -67,14 +81,21 @@ exports.login = async (req, res) => {
         const payload = {
             id: user.id,
             email: user.email,
-            role: userRole?.Rol || null
+            role: userRole?.Rol || null,
+            pizzeria_id: user.pizzeria_id
         };
 
         const token = jwt.sign(payload, process.env.SECRET_KEY, {
             expiresIn: '1d'
         });
-        let userID = user.id;
-        res.status(200).json({ message: 'Inicio de sesión exitoso', token, userID });
+
+        res.status(200).json({
+            message: 'Inicio de sesión exitoso',
+            token,
+            userID: user.id,
+            pizzeria_id: user.pizzeria_id,
+            role: userRole?.Rol || null
+        });
 
     } catch (error) {
         console.error('Error en login:', error);
@@ -86,23 +107,21 @@ exports.consult = async (req, res) => {
     try {
         authenticateToken(req, res, async () => {
             const { id } = req.body;
-
-          //  const roleCode = req.user?.role?.users_admin || '';
-           // const permisosValidos = ["XX", "XR", "RU", "CR"];
-
-          //  if (!permisosValidos.includes(roleCode)) {
-            //    return res.status(403).json({ message: 'Acceso denegado' });
-         //   }
-
+            console.log('-----------id', id);
+            // Si envías id, trae uno; si no, lista
             if (id) {
-                const user = await Usuario.findOne({ where: { id, is_active: true } });
+                const user = await Usuario.findOne({
+                    where: { id, is_active: true },
+                    attributes: ['id', 'username', 'full_name', 'email', 'phone', 'pizzeria_id', 'is_verified']
+                });
+                console.log('-----------user', user);
                 return user
                     ? res.status(200).json({ message: 'Usuario encontrado', data: user })
                     : res.status(404).json({ message: 'Usuario no encontrado' });
             } else {
                 const users = await Usuario.findAll({
                     where: { is_active: true },
-                    attributes: ['id', 'username', 'email', 'is_verified']
+                    attributes: ['id', 'username', 'full_name', 'email', 'phone', 'pizzeria_id', 'is_verified']
                 });
                 return res.status(200).json({ message: 'Usuarios registrados', data: users });
             }
@@ -115,15 +134,22 @@ exports.consult = async (req, res) => {
 
 exports.update = async (req, res) => {
     try {
-        const { id, username, email } = req.body;
+        const { id, username, email, full_name, phone, pizzeria_id } = req.body;
         if (!id || !username || !email) {
-            return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+            return res.status(400).json({ message: 'id, username y email son obligatorios.' });
         }
 
         const user = await Usuario.findByPk(id);
         if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-        await user.update({ username, email, update_at: new Date() });
+        await user.update({
+            username,
+            email,
+            full_name: full_name || user.full_name,
+            phone: phone || user.phone,
+            pizzeria_id: pizzeria_id ?? user.pizzeria_id,
+            update_at: new Date()
+        });
 
         res.status(200).json({ message: 'Usuario actualizado con éxito', data: user });
     } catch (error) {

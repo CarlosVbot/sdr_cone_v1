@@ -11,14 +11,26 @@ const Usuario = sequelize.define('usuarios',{
         type: DataTypes.STRING(60),
         allowNull: false,
     },
+    full_name: {
+        type: DataTypes.STRING(120),
+        allowNull: false
+    },
     email: {
         type: DataTypes.STRING(60),
         allowNull: false,
         unique: true,
     },
+    phone: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+    },
     password_hash: {
         type: DataTypes.STRING(255),
         allowNull: false,
+    },
+    pizzeria_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
     },
     create_at: {
         type: DataTypes.DATE,
@@ -39,6 +51,11 @@ const Usuario = sequelize.define('usuarios',{
 }, {
     timestamps: false,
     tableName: 'usuarios',
+    hooks: {
+        beforeUpdate: (user) => {
+            user.update_at = new Date();
+        }
+    }
 })
 
 

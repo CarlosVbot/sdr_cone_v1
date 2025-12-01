@@ -2,25 +2,31 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
-const authRoutes = require('./routes/userRouters');
-const errorHandler = require('./middlewares/errorHandler');
-const ingresoRoutes = require('./routes/ingresoRouters');
-const gastoRoutes = require('./routes/gastoRouters');
 
 require('dotenv').config();
 
+const errorHandler = require('./middlewares/errorHandler');
+
+// Rutas existentes (usuarios / auth)
+const userRoutes = require('./routes/userRouters');
+
+// 🔹 Nuevas rutas para la pizzería
+const productoRoutes = require('./routes/productoRouters');
+const pedidoRoutes = require('./routes/pedidoRouters');
+
 const app = express();
 
+// Middlewares globales
 app.use(helmet());
-
 app.use(cors());
-
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
-app.use('/api/ingresos', ingresoRoutes);
-app.use('/api/gastos', gastoRoutes);
+// Rutas de la API
+app.use('/api/auth', userRoutes);          // login / register / usuarios
+app.use('/api/productos', productoRoutes); // menú (pizzas, bebidas, etc.)
+app.use('/api/pedidos', pedidoRoutes);     // órdenes/pedidos
 
+// Manejador de errores
 app.use(errorHandler);
 
 module.exports = app;
