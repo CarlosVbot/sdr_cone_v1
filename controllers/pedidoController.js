@@ -752,7 +752,27 @@ exports.dashboardResumen = async (req, res) => {
 
             if (resultados && resultados.length > 0) {
                 const row = resultados[0];
-
+                console.log(row);
+                if(!row[0]) {
+                    return res.status(200).json({
+                        message: 'Resumen de dashboard',
+                        data: {
+                            kpis: {
+                                totalVendidasHoy,
+                                totalCanceladasHoy,
+                                totalDia,
+                                pedidosVendidosHoy,
+                                pedidosCanceladosHoy
+                            },
+                            rango: {
+                                desde: inicioRango.toISOString().slice(0, 10),
+                                hasta: finRango.toISOString().slice(0, 10)
+                            },
+                            ventasPorFecha,
+                            productoMasVendido: null
+                        }
+                    });
+                }
                 productoMasVendido = {
                     producto_id: row[0].producto_id,
                     nombre: row[0].nombre,
