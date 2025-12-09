@@ -4,11 +4,13 @@ const {
     PedidoDetalle,
     Producto,
     Usuario,
-    sequelize
+    sequelize,
+    Extra,
 } = require('../models');
 const authenticateToken = require('../middlewares/authenticateToken');
 
 // Crear pedido con sus detalles
+// Crear pedido con sus detalles (productos + extras)
 exports.create = async (req, res) => {
     authenticateToken(req, res, async () => {
         const user = req.user || {};
@@ -37,21 +39,72 @@ exports.create = async (req, res) => {
 
         const t = await sequelize.transaction();
         try {
-            const productIds = [...new Set(items.map(i => i.producto_id))];
+            // 1) Juntamos IDs de productos y extras usados
+            const productIds = [];
+            const extraIdsSet = new Set();
 
-            const productos = await Producto.findAll({
-                where: { id: productIds, pizzeria_id },
-                transaction: t
-            });
+            for (const item of items) {
+                if (item.producto_id) {
+                    productIds.push(item.producto_id);
+                }
+                if (Array.isArray(item.extras)) {
+                    for (const ex of item.extras) {
+                        if (ex.extra_id) {
+                            extraIdsSet.add(ex.extra_id);
+                        }
+                    }
+                }
+            }
+
+            const uniqueProductIds = [...new Set(productIds)];
+            const extraIds = [...extraIdsSet];
+
+            // 2) Consultamos catálogo de productos y extras
+            const [productos, extrasCat] = await Promise.all([
+                Producto.findAll({
+                    where: { id: uniqueProductIds, pizzeria_id },
+                    transaction: t
+                }),
+                extraIds.length
+                    ? Extra.findAll({
+                        where: { id: extraIds, pizzeria_id, is_active: true },
+                        transaction: t
+                    })
+                    : Promise.resolve([])
+            ]);
 
             const productosMap = {};
             productos.forEach(p => {
                 productosMap[p.id] = p;
             });
 
-            let total = 0;
-            const detallesData = [];
+            const extrasMap = {};
+            extrasCat.forEach(e => {
+                extrasMap[e.id] = e;
+            });
 
+            // 3) Crear el pedido con total = 0 (lo calculamos después)
+            const pedido = await Pedido.create(
+                {
+                    pizzeria_id,
+                    usuario_id,
+                    tipo: tipo || 'MOSTRADOR',
+                    mesa: mesa || null,
+                    origen: origen || 'LOCAL',
+                    status: 'EN PREPARACION',
+                    metodo_pago: metodo_pago || null,
+                    total: 0,
+                    notas: notas || null,
+                    create_at: new Date(),
+                    update_at: new Date(),
+                    is_active: true
+                },
+                { transaction: t }
+            );
+
+            let total = 0;
+
+            // 4) Crear detalles de productos y sus extras
             for (const item of items) {
                 const prod = productosMap[item.producto_id];
                 if (!prod) {
@@ -67,50 +120,79 @@ exports.create = async (req, res) => {
                 const subtotal = cantidad * precio_unitario;
                 total += subtotal;
 
-                detallesData.push({
-                    pedido_id: null, // se llenará después
-                    producto_id: prod.id,
-                    cantidad,
-                    precio_unitario,
-                    subtotal,
-                    create_at: new Date(),
-                    update_at: new Date(),
-                    is_active: true
-                });
+                // Crear línea base del producto
+                const detalleBase = await PedidoDetalle.create(
+                    {
+                        pedido_id: pedido.id,
+                        producto_id: prod.id,
+                        extra_id: null,
+                        parent_detalle_id: null,
+                        cantidad,
+                        precio_unitario,
+                        subtotal,
+                        notas: item.notas || null,
+                        create_at: new Date(),
+                        update_at: new Date(),
+                        is_active: true
+                    },
+                    { transaction: t }
+                );
+
+                // Crear líneas de extras (si vienen)
+                if (Array.isArray(item.extras)) {
+                    for (const exItem of item.extras) {
+                        const extraCat = extrasMap[exItem.extra_id];
+                        if (!extraCat) {
+                            throw new Error(`Extra ${exItem.extra_id} no encontrado en esta pizzería`);
+                        }
+
+                        const cantidadExtra = Number(exItem.cantidad || 1);
+                        if (isNaN(cantidadExtra) || cantidadExtra <= 0) {
+                            throw new Error('Cantidad inválida en uno de los extras');
+                        }
+
+                        const precioExtra = parseFloat(extraCat.precio);
+                        const subtotalExtra = cantidadExtra * precioExtra;
+                        total += subtotalExtra;
+
+                        await PedidoDetalle.create(
+                            {
+                                pedido_id: pedido.id,
+                                producto_id: null,
+                                extra_id: extraCat.id,
+                                parent_detalle_id: detalleBase.id,
+                                cantidad: cantidadExtra,
+                                precio_unitario: precioExtra,
+                                subtotal: subtotalExtra,
+                                notas: null,
+                                create_at: new Date(),
+                                update_at: new Date(),
+                                is_active: true
+                            },
+                            { transaction: t }
+                        );
+                    }
+                }
             }
 
-            const pedido = await Pedido.create(
+            // 5) Actualizar total del pedido
+            await pedido.update(
                 {
-                    pizzeria_id,
-                    usuario_id,
-                    tipo: tipo || 'MOSTRADOR',
-                    mesa: mesa || null,
-                    origen: origen || 'LOCAL',
-                    status: 'PENDIENTE',
-                    metodo_pago: metodo_pago || null,
                     total,
-                    notas: notas || null,
-                    create_at: new Date(),
-                    update_at: new Date(),
-                    is_active: true
+                    update_at: new Date()
                 },
                 { transaction: t }
             );
 
-            detallesData.forEach(d => {
-                d.pedido_id = pedido.id;
-            });
-
-            await PedidoDetalle.bulkCreate(detallesData, { transaction: t });
-
             await t.commit();
 
+            // 6) Traer el pedido completo con productos + extras
             const pedidoCompleto = await Pedido.findOne({
                 where: { id: pedido.id },
                 include: [
                     {
                         model: PedidoDetalle,
-                        include: [Producto]
+                        include: [Producto, Extra]
                     },
                     {
                         model: Usuario,
@@ -133,6 +215,7 @@ exports.create = async (req, res) => {
         }
     });
 };
+
 
 // Consultar pedidos (lista o uno)
 exports.consult = async (req, res) => {
@@ -188,7 +271,7 @@ exports.consult = async (req, res) => {
                     include: [
                         {
                             model: PedidoDetalle,
-                            include: [Producto]
+                            include: [Producto, Extra]
                         },
                         {
                             model: Usuario,
@@ -211,7 +294,7 @@ exports.consult = async (req, res) => {
                     include: [
                         {
                             model: PedidoDetalle,
-                            include: [Producto]
+                            include: [Producto, Extra]
                         },
                         {
                             model: Usuario,
@@ -233,7 +316,6 @@ exports.consult = async (req, res) => {
     });
 };
 
-// Cambiar estatus del pedido (PENDIENTE, PREPARACION, LISTO, ENTREGADO, CANCELADO)
 exports.updateStatus = async (req, res) => {
     authenticateToken(req, res, async () => {
         try {
@@ -318,12 +400,12 @@ exports.updateItems = async (req, res) => {
     authenticateToken(req, res, async () => {
         const user = req.user || {};
         const {
-            id,              // id del pedido
-            items,           // nuevo arreglo de productos
+            id,
+            items,
             pizzeria_id: bodyPizzeriaId
         } = req.body;
 
-        const pizzeria_id = 1;
+        const pizzeria_id = user.pizzeria_id || bodyPizzeriaId;
 
         if (!id) {
             return res.status(400).json({ message: 'id del pedido es obligatorio.' });
@@ -353,27 +435,56 @@ exports.updateItems = async (req, res) => {
                 return res.status(400).json({ message: 'No se pueden editar productos de un pedido ENTREGADO o CANCELADO.' });
             }
 
-            // 2) Borrar detalles actuales (duro y directo; para demo es suficiente)
             await PedidoDetalle.destroy({
                 where: { pedido_id: id },
                 transaction: t
             });
 
-            const productIds = [...new Set(items.map(i => i.producto_id))];
+            const productIds = [];
+            const extraIdsSet = new Set();
 
-            const productos = await Producto.findAll({
-                where: { id: productIds, pizzeria_id },
-                transaction: t
-            });
+            for (const item of items) {
+                if (item.producto_id) {
+                    productIds.push(item.producto_id);
+                }
+                if (Array.isArray(item.extras)) {
+                    for (const ex of item.extras) {
+                        if (ex.extra_id) {
+                            extraIdsSet.add(ex.extra_id);
+                        }
+                    }
+                }
+            }
+
+            const uniqueProductIds = [...new Set(productIds)];
+            const extraIds = [...extraIdsSet];
+
+            const [productos, extrasCat] = await Promise.all([
+                Producto.findAll({
+                    where: { id: uniqueProductIds, pizzeria_id },
+                    transaction: t
+                }),
+                extraIds.length
+                    ? Extra.findAll({
+                        where: { id: extraIds, pizzeria_id, is_active: true },
+                        transaction: t
+                    })
+                    : Promise.resolve([])
+            ]);
 
             const productosMap = {};
             productos.forEach(p => {
                 productosMap[p.id] = p;
             });
 
-            let total = 0;
-            const detallesData = [];
+            const extrasMap = {};
+            extrasCat.forEach(e => {
+                extrasMap[e.id] = e;
+            });
 
+            let total = 0;
+
+            // 3) Crear de nuevo detalles (productos + extras)
             for (const item of items) {
                 const prod = productosMap[item.producto_id];
                 if (!prod) {
@@ -389,22 +500,62 @@ exports.updateItems = async (req, res) => {
                 const subtotal = cantidad * precio_unitario;
                 total += subtotal;
 
-                detallesData.push({
-                    pedido_id: id,
-                    producto_id: prod.id,
-                    cantidad,
-                    precio_unitario,
-                    subtotal,
-                    create_at: new Date(),
-                    update_at: new Date(),
-                    is_active: true
-                });
+                // Línea base
+                const detalleBase = await PedidoDetalle.create(
+                    {
+                        pedido_id: id,
+                        producto_id: prod.id,
+                        extra_id: null,
+                        parent_detalle_id: null,
+                        cantidad,
+                        precio_unitario,
+                        subtotal,
+                        notas: item.notas || null,
+                        create_at: new Date(),
+                        update_at: new Date(),
+                        is_active: true
+                    },
+                    { transaction: t }
+                );
+
+                // Extras
+                if (Array.isArray(item.extras)) {
+                    for (const exItem of item.extras) {
+                        const extraCat = extrasMap[exItem.extra_id];
+                        if (!extraCat) {
+                            throw new Error(`Extra ${exItem.extra_id} no encontrado en esta pizzería`);
+                        }
+
+                        const cantidadExtra = Number(exItem.cantidad || 1);
+                        if (isNaN(cantidadExtra) || cantidadExtra <= 0) {
+                            throw new Error('Cantidad inválida en uno de los extras');
+                        }
+
+                        const precioExtra = parseFloat(extraCat.precio);
+                        const subtotalExtra = cantidadExtra * precioExtra;
+                        total += subtotalExtra;
+
+                        await PedidoDetalle.create(
+                            {
+                                pedido_id: id,
+                                producto_id: null,
+                                extra_id: extraCat.id,
+                                parent_detalle_id: detalleBase.id,
+                                cantidad: cantidadExtra,
+                                precio_unitario: precioExtra,
+                                subtotal: subtotalExtra,
+                                notas: null,
+                                create_at: new Date(),
+                                update_at: new Date(),
+                                is_active: true
+                            },
+                            { transaction: t }
+                        );
+                    }
+                }
             }
 
-            // 4) Crear de nuevo los detalles
-            await PedidoDetalle.bulkCreate(detallesData, { transaction: t });
-
-            // 5) Actualizar total del pedido
+            // 4) Actualizar total del pedido
             await pedido.update(
                 {
                     total,
@@ -415,13 +566,13 @@ exports.updateItems = async (req, res) => {
 
             await t.commit();
 
-            // 6) Volver a traer el pedido completo con detalles y usuario
+            // 5) Volver a traer el pedido completo con detalles y usuario
             const pedidoCompleto = await Pedido.findOne({
                 where: { id: pedido.id },
                 include: [
                     {
                         model: PedidoDetalle,
-                        include: [Producto]
+                        include: [Producto, Extra]
                     },
                     {
                         model: Usuario,
@@ -444,6 +595,7 @@ exports.updateItems = async (req, res) => {
         }
     });
 };
+
 
 // Resumen para Dashboard (KPIs + gráfica + producto más vendido)
 exports.dashboardResumen = async (req, res) => {
@@ -473,7 +625,8 @@ exports.dashboardResumen = async (req, res) => {
                 where: {
                     pizzeria_id,
                     is_active: true,
-                    create_at: { [Op.between]: [inicioHoy, finHoy] }
+                    create_at: { [Op.between]: [inicioHoy, finHoy] },
+                    status: { [Op.in]: ['ENTREGADO'] }
                 },
                 attributes: [
                     'status',

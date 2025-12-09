@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
-
+const extraRoutes = require('./routes/extraRoutes');
 require('dotenv').config();
 
 const errorHandler = require('./middlewares/errorHandler');
@@ -16,17 +16,16 @@ const pedidoRoutes = require('./routes/pedidoRouters');
 
 const app = express();
 
-// Middlewares globales
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Rutas de la API
-app.use('/api/auth', userRoutes);          // login / register / usuarios
-app.use('/api/productos', productoRoutes); // menú (pizzas, bebidas, etc.)
-app.use('/api/pedidos', pedidoRoutes);     // órdenes/pedidos
+app.use('/api/auth', userRoutes);
+app.use('/api/productos', productoRoutes);
+app.use('/api/pedidos', pedidoRoutes);
 
-// Manejador de errores
 app.use(errorHandler);
+
+app.use('/api/extras', extraRoutes);
 
 module.exports = app;
