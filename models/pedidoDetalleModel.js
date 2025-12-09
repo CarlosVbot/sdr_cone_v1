@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelizer');
 const Pedido = require('./pedidoModel');
 const Producto = require('./productoModel');
+const Extra = require('./extraModel'); // 👈 nuevo import
 
 const PedidoDetalle = sequelize.define('pedido_detalles', {
     id: {
@@ -19,11 +20,32 @@ const PedidoDetalle = sequelize.define('pedido_detalles', {
         }
     },
 
+    // Producto normal (línea base)
     producto_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true, // puede ser null cuando es un extra
         references: {
             model: Producto,
+            key: 'id'
+        }
+    },
+
+    // Extra tomado del catálogo de extras
+    extra_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: Extra,
+            key: 'id'
+        }
+    },
+
+    // Línea padre (la pizza o producto al que pertenece este extra)
+    parent_detalle_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'pedido_detalles', // usamos el nombre de la tabla
             key: 'id'
         }
     },
