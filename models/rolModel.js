@@ -33,12 +33,3 @@ const Rol = sequelize.define('roles',{
 })
 
 module.exports = Rol;
-/*
-CR =create read,
-CU = create update,
-RU = read update,
-XR = read,
-XC = create,
-XU = update,
-XX = all
-*/

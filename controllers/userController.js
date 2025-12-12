@@ -107,23 +107,82 @@ exports.consult = async (req, res) => {
     try {
         authenticateToken(req, res, async () => {
             const { id } = req.body;
-            console.log('-----------id', id);
-            // Si envías id, trae uno; si no, lista
+
             if (id) {
                 const user = await Usuario.findOne({
                     where: { id, is_active: true },
                     attributes: ['id', 'username', 'full_name', 'email', 'phone', 'pizzeria_id', 'is_verified']
                 });
-                console.log('-----------user', user);
-                return user
-                    ? res.status(200).json({ message: 'Usuario encontrado', data: user })
-                    : res.status(404).json({ message: 'Usuario no encontrado' });
+
+                if (!user) {
+                    return res.status(404).json({ message: 'Usuario no encontrado' });
+                }
+
+                const userRole = await UserRol.findOne({
+                    where: { user_id: id },
+                    include: {
+                        model: Rol,
+                        attributes: ['id', 'name']
+                    }
+                });
+                console.log(userRole);
+                const role = userRole ;
+                console.log(role);
+                // 3) Devolver usuario + rol
+                return res.status(200).json({
+                    message: 'Usuario encontrado',
+                    data: {
+                        ...user.toJSON(),
+                        role      : role,               // objeto { id, name }
+                        roleName  : role ? role.name : null // por si quieres algo directo
+                    }
+                });
+
             } else {
+                // 1) Traer todos los usuarios
                 const users = await Usuario.findAll({
                     where: { is_active: true },
                     attributes: ['id', 'username', 'full_name', 'email', 'phone', 'pizzeria_id', 'is_verified']
                 });
-                return res.status(200).json({ message: 'Usuarios registrados', data: users });
+
+                // Si no hay usuarios, regresa vacío
+                if (!users || users.length === 0) {
+                    return res.status(200).json({ message: 'Sin usuarios', data: [] });
+                }
+
+                // 2) Sacar ids de usuarios
+                const userIds = users.map(u => u.id);
+
+                // 3) Traer los roles de esos usuarios
+                const userRoles = await UserRol.findAll({
+                    where: { user_id: userIds },
+                    include: {
+                        model: Rol,
+                        attributes: ['id', 'name']
+                    }
+                });
+
+                // 4) Armar un map user_id -> Rol
+                const rolesByUserId = {};
+                for (const ur of userRoles) {
+                    rolesByUserId[ur.user_id] = ur.Rol;
+                }
+
+                // 5) Mezclar usuarios + rol
+                const result = users.map(u => {
+                    const json = u.toJSON();
+                    const role = rolesByUserId[u.id] || null;
+                    return {
+                        ...json,
+                        role,
+                        roleName: role ? role.name : null
+                    };
+                });
+
+                return res.status(200).json({
+                    message: 'Usuarios registrados',
+                    data: result
+                });
             }
         });
     } catch (error) {
@@ -131,7 +190,6 @@ exports.consult = async (req, res) => {
         res.status(500).json({ message: 'Error en el servidor.' });
     }
 };
-
 exports.update = async (req, res) => {
     try {
         const { id, username, email, full_name, phone, pizzeria_id } = req.body;
