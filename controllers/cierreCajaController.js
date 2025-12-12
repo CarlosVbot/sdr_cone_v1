@@ -3,7 +3,7 @@ const { Op, fn, col } = require('sequelize');
 const sequelize = require('../config/sequelizer'); // el mismo que usas en tus modelos
 const { Pedido, CierreCaja } = require('../models'); // tu index.js exporta modelos
 const authenticateToken = require('../middlewares/authenticateToken');
-
+const { DateTime } = require("luxon");
 const STATUS_CANCELADO = 'CANCELADO'; // si en tu sistema el cancelado se llama distinto, cámbialo aquí
 
 function toNum(val) {
@@ -17,6 +17,14 @@ function toMoney(val) {
 }
 
 function getRangoFechas(desde, hasta) {
+    // si son iguales, extendemos "hasta" + 1 día
+    if (desde === hasta) {
+        console.log("Extendiendo rango de fechas en 1 día porque son iguales");
+        const d = new Date(hasta + "T00:00:00");
+        d.setDate(d.getDate() + 1);
+        hasta = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    }
+
     const inicio = new Date(desde);
     inicio.setHours(0, 0, 0, 0);
 

@@ -666,6 +666,10 @@ exports.dashboardResumen = async (req, res) => {
             }
             if (hasta) {
                 finRango = new Date(hasta);
+                if(desde === hasta) {
+                    finRango = new Date(hasta);
+                    finRango.setDate(finRango.getDate() + 1);
+                }
             }
 
             if (!inicioRango || !finRango) {
@@ -677,8 +681,8 @@ exports.dashboardResumen = async (req, res) => {
                 inicioRango.setDate(inicioRango.getDate() - 6);
             }
 
-            inicioRango.setHours(0, 0, 0, 0);
-            finRango.setHours(23, 59, 59, 999);
+            //inicioRango.setHours(0, 0, 0, 0);
+           // finRango.setHours(0, 0, 0, 0);
 
             const ventasPorFechaRaw = await Pedido.findAll({
                 where: {
