@@ -27,5 +27,6 @@ app.use('/api/pedidos', pedidoRoutes);
 app.use(errorHandler);
 
 app.use('/api/extras', extraRoutes);
+app.use('/api/cierres', require('./routes/cierreCajaRoutes'));
 
 module.exports = app;

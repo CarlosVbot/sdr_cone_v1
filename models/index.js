@@ -1,5 +1,5 @@
 const sequelize = require('../config/sequelizer');
-
+const CierreCaja = require('./cierreCajaModel');
 const Usuario = require('./userModel');
 const Rol = require('./rolModel');
 const UserRol = require('./user_rolModel');
@@ -72,6 +72,9 @@ PedidoDetalle.belongsTo(PedidoDetalle, {
 // =====================
 // Exportar modelos
 // =====================
+// Cierres por pizzería
+Pizzeria.hasMany(CierreCaja, { foreignKey: 'pizzeria_id' });
+CierreCaja.belongsTo(Pizzeria, { foreignKey: 'pizzeria_id' });
 
 module.exports = {
     sequelize,
@@ -84,5 +87,6 @@ module.exports = {
     Producto,
     Pedido,
     PedidoDetalle,
-    Extra
+    Extra,
+    CierreCaja
 };

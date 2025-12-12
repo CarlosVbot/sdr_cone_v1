@@ -49,7 +49,7 @@ const Pedido = sequelize.define('pedidos', {
     status: {
         type: DataTypes.STRING(30),
         allowNull: false,
-        defaultValue: 'PENDIENTE'
+        defaultValue: 'PREPARACION'
     },
 
     metodo_pago: {
