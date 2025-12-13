@@ -248,7 +248,7 @@ exports.consult = async (req, res) => {
                 where.tipo = tipo;
             }
 
-            if (soloHoy) {
+           /* if (soloHoy) {
                 const inicioHoy = new Date();
                 inicioHoy.setHours(0, 0, 0, 0);
 
@@ -263,7 +263,7 @@ exports.consult = async (req, res) => {
                 where.create_at = {};
                 if (desde) where.create_at[Op.gte] = new Date(desde);
                 if (hasta) where.create_at[Op.lte] = new Date(hasta);
-            }
+            }*/
 
             if (id) {
                 const pedido = await Pedido.findOne({
@@ -666,6 +666,10 @@ exports.dashboardResumen = async (req, res) => {
             }
             if (hasta) {
                 finRango = new Date(hasta);
+                if(desde === hasta) {
+                    finRango = new Date(hasta);
+                    finRango.setDate(finRango.getDate() + 1);
+                }
             }
 
             if (!inicioRango || !finRango) {
@@ -677,8 +681,8 @@ exports.dashboardResumen = async (req, res) => {
                 inicioRango.setDate(inicioRango.getDate() - 6);
             }
 
-            inicioRango.setHours(0, 0, 0, 0);
-            finRango.setHours(23, 59, 59, 999);
+            //inicioRango.setHours(0, 0, 0, 0);
+           // finRango.setHours(0, 0, 0, 0);
 
             const ventasPorFechaRaw = await Pedido.findAll({
                 where: {
@@ -687,7 +691,7 @@ exports.dashboardResumen = async (req, res) => {
                     create_at: { [Op.between]: [inicioRango, finRango] }
                 },
                 attributes: [
-                    [sequelize.fn('DATE', sequelize.col('create_at')), 'fecha'],
+                   // [sequelize.fn('DATE', sequelize.col('create_at')), 'fecha'],
                     [sequelize.fn('SUM', sequelize.col('total')), 'total'],
                     [
                         sequelize.fn(
@@ -697,8 +701,8 @@ exports.dashboardResumen = async (req, res) => {
                         'canceladas'
                     ]
                 ],
-                group: [sequelize.fn('DATE', sequelize.col('create_at'))],
-                order: [[sequelize.fn('DATE', sequelize.col('create_at')), 'ASC']]
+              //  group: [sequelize.fn('DATE', sequelize.col('create_at'))],
+             //   order: [[sequelize.fn('DATE', sequelize.col('create_at')), 'ASC']]
             });
 
             const ventasPorFecha = ventasPorFechaRaw.map(row => {
