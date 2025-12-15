@@ -9,6 +9,30 @@ const {
 } = require('../models');
 const authenticateToken = require('../middlewares/authenticateToken');
 
+const { DateTime } = require("luxon");
+const MX_TZ = "America/Mexico_City";
+
+function mxTodayRangeUtc() {
+    const nowMx = DateTime.now().setZone(MX_TZ);
+    return {
+        start: nowMx.startOf("day").toUTC().toJSDate(),
+        end: nowMx.endOf("day").toUTC().toJSDate(),
+    };
+}
+
+function mxDateRangeUtc(desde, hasta) {
+    // esperado: "YYYY-MM-DD" (día local México)
+    const start = desde
+        ? DateTime.fromISO(desde, { zone: MX_TZ }).startOf("day").toUTC().toJSDate()
+        : null;
+
+    const end = hasta
+        ? DateTime.fromISO(hasta, { zone: MX_TZ }).endOf("day").toUTC().toJSDate()
+        : null;
+
+    return { start, end };
+}
+
 // Crear pedido con sus detalles
 // Crear pedido con sus detalles (productos + extras)
 exports.create = async (req, res) => {
@@ -248,22 +272,15 @@ exports.consult = async (req, res) => {
                 where.tipo = tipo;
             }
 
-           /* if (soloHoy) {
-                const inicioHoy = new Date();
-                inicioHoy.setHours(0, 0, 0, 0);
-
-                const finHoy = new Date();
-                finHoy.setHours(23, 59, 59, 999);
-
-                where.create_at = {
-                    [Op.gte]: inicioHoy,
-                    [Op.lte]: finHoy
-                };
+            if (soloHoy) {
+                const { start, end } = mxTodayRangeUtc();
+                where.create_at = { [Op.between]: [start, end] };
             } else if (desde || hasta) {
+                const { start, end } = mxDateRangeUtc(desde, hasta);
                 where.create_at = {};
-                if (desde) where.create_at[Op.gte] = new Date(desde);
-                if (hasta) where.create_at[Op.lte] = new Date(hasta);
-            }*/
+                if (start) where.create_at[Op.gte] = start;
+                if (end) where.create_at[Op.lte] = end;
+            }
 
             if (id) {
                 const pedido = await Pedido.findOne({
@@ -602,31 +619,27 @@ exports.dashboardResumen = async (req, res) => {
     authenticateToken(req, res, async () => {
         try {
             const user = req.user || {};
-            const {
-                desde,
-                hasta,
-                pizzeria_id: bodyPizzeriaId
-            } = req.body;
+            const { desde, hasta, pizzeria_id: bodyPizzeriaId } = req.body;
 
             const pizzeria_id = user.pizzeria_id || bodyPizzeriaId;
-
             if (!pizzeria_id) {
                 return res.status(400).json({ message: 'No se encontró pizzeria_id.' });
             }
 
-            // 1) KPIs de HOY
-            const inicioHoy = new Date();
-            inicioHoy.setHours(0, 0, 0, 0);
+            const MX_TZ = 'America/Mexico_City';
+            const nowMx = DateTime.now().setZone(MX_TZ);
 
-            const finHoy = new Date();
-            finHoy.setHours(23, 59, 59, 999);
+            // 1) KPIs de HOY (según México) -> convertimos a UTC para filtrar en BD
+            const inicioHoy = nowMx.startOf('day').toUTC().toJSDate();
+            const finHoy = nowMx.endOf('day').toUTC().toJSDate();
 
             const pedidosHoy = await Pedido.findAll({
                 where: {
                     pizzeria_id,
                     is_active: true,
                     create_at: { [Op.between]: [inicioHoy, finHoy] },
-                    status: { [Op.in]: ['ENTREGADO'] }
+                    // Si quieres contemplar cancelados en KPIs:
+                    status: { [Op.in]: ['ENTREGADO', 'CANCELADO'] }
                 },
                 attributes: [
                     'status',
@@ -642,7 +655,7 @@ exports.dashboardResumen = async (req, res) => {
             let pedidosCanceladosHoy = 0;
 
             pedidosHoy.forEach(row => {
-                const status = row.status;
+                const status = row.get('status');
                 const total = parseFloat(row.get('total') || 0);
                 const cantidad = parseInt(row.get('cantidad') || 0, 10);
 
@@ -657,32 +670,27 @@ exports.dashboardResumen = async (req, res) => {
 
             const totalDia = totalVendidasHoy - totalCanceladasHoy;
 
-            // 2) Rango para la gráfica (por defecto últimos 7 días)
-            let inicioRango;
-            let finRango;
+            // 2) Rango para la gráfica (por defecto últimos 7 días en México)
+            let startMx = null;
+            let endMx = null;
 
-            if (desde) {
-                inicioRango = new Date(desde);
-            }
-            if (hasta) {
-                finRango = new Date(hasta);
-                if(desde === hasta) {
-                    finRango = new Date(hasta);
-                    finRango.setDate(finRango.getDate() + 1);
-                }
-            }
+            if (desde) startMx = DateTime.fromISO(desde, { zone: MX_TZ }).startOf('day');
+            if (hasta) endMx = DateTime.fromISO(hasta, { zone: MX_TZ }).endOf('day');
 
-            if (!inicioRango || !finRango) {
-                const hoy = new Date();
-                hoy.setHours(23, 59, 59, 999);
-                finRango = finRango || hoy;
-
-                inicioRango = inicioRango || new Date(finRango);
-                inicioRango.setDate(inicioRango.getDate() - 6);
+            if (!startMx && !endMx) {
+                endMx = nowMx.endOf('day');
+                startMx = nowMx.minus({ days: 6 }).startOf('day'); // 7 días contando hoy
+            } else if (startMx && !endMx) {
+                endMx = nowMx.endOf('day');
+            } else if (!startMx && endMx) {
+                startMx = endMx.minus({ days: 6 }).startOf('day');
             }
 
-            //inicioRango.setHours(0, 0, 0, 0);
-           // finRango.setHours(0, 0, 0, 0);
+            const inicioRango = startMx.toUTC().toJSDate();
+            const finRango = endMx.toUTC().toJSDate();
+
+            // (Postgres) agrupar por “día en México” para que no se muevan barras por UTC
+            const fechaExpr = sequelize.literal(`DATE("create_at" AT TIME ZONE '${MX_TZ}')`);
 
             const ventasPorFechaRaw = await Pedido.findAll({
                 where: {
@@ -691,29 +699,19 @@ exports.dashboardResumen = async (req, res) => {
                     create_at: { [Op.between]: [inicioRango, finRango] }
                 },
                 attributes: [
-                   // [sequelize.fn('DATE', sequelize.col('create_at')), 'fecha'],
-                    [sequelize.fn('SUM', sequelize.col('total')), 'total'],
-                    [
-                        sequelize.fn(
-                            'SUM',
-                            sequelize.literal("CASE WHEN status = 'CANCELADO' THEN total ELSE 0 END")
-                        ),
-                        'canceladas'
-                    ]
+                    [fechaExpr, 'fecha'],
+                    [sequelize.literal(`SUM(CASE WHEN status != 'CANCELADO' THEN total ELSE 0 END)`), 'total'],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'CANCELADO' THEN total ELSE 0 END)`), 'canceladas']
                 ],
-              //  group: [sequelize.fn('DATE', sequelize.col('create_at'))],
-             //   order: [[sequelize.fn('DATE', sequelize.col('create_at')), 'ASC']]
+                group: [fechaExpr],
+                order: [[fechaExpr, 'ASC']]
             });
 
             const ventasPorFecha = ventasPorFechaRaw.map(row => {
                 const rawFecha = row.get('fecha');
-                let fechaStr;
-
-                if (rawFecha instanceof Date) {
-                    fechaStr = rawFecha.toISOString().slice(0, 10);
-                } else {
-                    fechaStr = String(rawFecha);
-                }
+                const fechaStr = rawFecha instanceof Date
+                    ? rawFecha.toISOString().slice(0, 10)
+                    : String(rawFecha);
 
                 return {
                     fecha: fechaStr,
@@ -722,70 +720,43 @@ exports.dashboardResumen = async (req, res) => {
                 };
             });
 
+            // Producto más vendido (QueryTypes.SELECT correcto)
             const resultados = await sequelize.query(
                 `
-                  SELECT 
-                    pd.producto_id,
-                    SUM(pd.cantidad) as "totalCantidad",
-                    SUM(pd.subtotal) as "totalImporte",
-                    p.nombre,
-                    p.descripcion,
-                    p.categoria
-                  FROM pedido_detalles pd
-                  INNER JOIN pedidos pe ON pd.pedido_id = pe.id
-                  INNER JOIN productos p ON pd.producto_id = p.id
-                  WHERE pe.pizzeria_id = :pizzeria_id
-                    AND pe.is_active = true
-                    AND pe.status != 'CANCELADO'
-                    AND pe.create_at BETWEEN :inicioRango AND :finRango
-                  GROUP BY pd.producto_id, p.id, p.nombre, p.descripcion, p.categoria
-                  ORDER BY SUM(pd.cantidad) DESC
-                  LIMIT 1
-                  `,
+          SELECT 
+            pd.producto_id,
+            SUM(pd.cantidad) as "totalCantidad",
+            SUM(pd.subtotal) as "totalImporte",
+            p.nombre,
+            p.descripcion,
+            p.categoria
+          FROM pedido_detalles pd
+          INNER JOIN pedidos pe ON pd.pedido_id = pe.id
+          INNER JOIN productos p ON pd.producto_id = p.id
+          WHERE pe.pizzeria_id = :pizzeria_id
+            AND pe.is_active = true
+            AND pe.status != 'CANCELADO'
+            AND pe.create_at BETWEEN :inicioRango AND :finRango
+          GROUP BY pd.producto_id, p.id, p.nombre, p.descripcion, p.categoria
+          ORDER BY SUM(pd.cantidad) DESC
+          LIMIT 1
+        `,
                 {
-                    replacements: {
-                        pizzeria_id,
-                        inicioRango,
-                        finRango,
-                    },
-                    type: Op.SELECT, // 👈 importante
+                    replacements: { pizzeria_id, inicioRango, finRango },
+                    type: QueryTypes.SELECT
                 }
             );
 
-            let productoMasVendido = null;
-
-            if (resultados && resultados.length > 0) {
-                const row = resultados[0];
-                console.log(row);
-                if(!row[0]) {
-                    return res.status(200).json({
-                        message: 'Resumen de dashboard',
-                        data: {
-                            kpis: {
-                                totalVendidasHoy,
-                                totalCanceladasHoy,
-                                totalDia,
-                                pedidosVendidosHoy,
-                                pedidosCanceladosHoy
-                            },
-                            rango: {
-                                desde: inicioRango.toISOString().slice(0, 10),
-                                hasta: finRango.toISOString().slice(0, 10)
-                            },
-                            ventasPorFecha,
-                            productoMasVendido: null
-                        }
-                    });
+            const productoMasVendido = resultados?.length
+                ? {
+                    producto_id: resultados[0].producto_id,
+                    nombre: resultados[0].nombre,
+                    descripcion: resultados[0].descripcion || "",
+                    categoria: resultados[0].categoria,
+                    totalCantidad: parseFloat(resultados[0].totalCantidad || 0),
+                    totalImporte: parseFloat(resultados[0].totalImporte || 0)
                 }
-                productoMasVendido = {
-                    producto_id: row[0].producto_id,
-                    nombre: row[0].nombre,
-                    descripcion: row[0].descripcion || "",
-                    categoria: row[0].categoria,
-                    totalCantidad: parseFloat(row[0].totalCantidad || 0),
-                    totalImporte: parseFloat(row[0].totalImporte || 0),
-                };
-            }
+                : null;
 
             return res.status(200).json({
                 message: 'Resumen de dashboard',
@@ -798,8 +769,9 @@ exports.dashboardResumen = async (req, res) => {
                         pedidosCanceladosHoy
                     },
                     rango: {
-                        desde: inicioRango.toISOString().slice(0, 10),
-                        hasta: finRango.toISOString().slice(0, 10)
+                        // devolvemos fechas “de México” para el front
+                        desde: startMx.toISODate(),
+                        hasta: endMx.toISODate()
                     },
                     ventasPorFecha,
                     productoMasVendido
@@ -807,7 +779,7 @@ exports.dashboardResumen = async (req, res) => {
             });
         } catch (error) {
             console.error('Error al obtener resumen de dashboard:', error);
-            res.status(500).json({ message: 'Error en el servidor.' });
+            return res.status(500).json({ message: 'Error en el servidor.' });
         }
     });
 };
