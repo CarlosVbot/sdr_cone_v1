@@ -743,7 +743,7 @@ exports.dashboardResumen = async (req, res) => {
         `,
                 {
                     replacements: { pizzeria_id, inicioRango, finRango },
-                    type: QueryTypes.SELECT
+                    type: Op.SELECT
                 }
             );
 
